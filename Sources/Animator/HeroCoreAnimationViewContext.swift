@@ -20,6 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if canImport(UIKit)
+
 import UIKit
 
 extension CALayer {
@@ -37,10 +39,10 @@ extension CALayer {
 
   @objc dynamic func hero_add(anim: CAAnimation, forKey: String?) {
     if let animationKey = forKey,
-      CALayer.heroAddedAnimations != nil,
-      let copiedAnim = anim.copy() as? CAAnimation {
-      copiedAnim.delegate = nil // having delegate resulted some weird animation behavior
-      CALayer.heroAddedAnimations?.append((self, animationKey, copiedAnim))
+        CALayer.heroAddedAnimations != nil,
+        let copiedAnim = anim.copy() as? CAAnimation {
+        copiedAnim.delegate = nil // having delegate resulted some weird animation behavior
+        CALayer.heroAddedAnimations?.append((self, animationKey, copiedAnim))
     }
     hero_add(anim: anim, forKey: forKey)
   }
@@ -456,3 +458,5 @@ internal class HeroCoreAnimationViewContext: HeroAnimatorViewContext {
     return animate(delay: targetState.delay, duration: duration)
   }
 }
+
+#endif
