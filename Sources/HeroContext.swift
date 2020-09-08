@@ -32,6 +32,7 @@ public class HeroContext {
   internal var targetStates = [UIView: HeroTargetState]()
   internal var superviewToNoSnapshotSubviewMap: [UIView: [(Int, UIView)]] = [:]
   internal var insertToViewFirst = false
+  internal var persistsSnapshotAfterCompletion = true
 
   internal var defaultCoordinateSpace: HeroCoordinateSpace = .local
 
@@ -60,6 +61,11 @@ public class HeroContext {
           idMap[heroID] = view
         }
         targetStates[view] = targetState
+      }
+      // If any of the views would not like to persist the snapshot, all snapshots will be removed.
+      // my brain is dead please spare me
+      if !view.hero.persistsSnapshotAfterCompletion {
+        persistsSnapshotAfterCompletion = false
       }
     }
   }

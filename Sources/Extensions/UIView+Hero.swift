@@ -90,6 +90,11 @@ public extension HeroExtension where Base: UIView {
     set { modifiers = newValue?.parse() }
   }
 
+  var persistsSnapshotAfterCompletion: Bool {
+    get { return objc_getAssociatedObject(base, &type(of: base).AssociatedKeys.heroPersistsSnapshotAfterCompletion) as? Bool ?? true }
+    set { objc_setAssociatedObject(base, &type(of: base).AssociatedKeys.heroPersistsSnapshotAfterCompletion, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+  }
+
   /// Used for .overFullScreen presentation
   internal var storedAlpha: CGFloat? {
     get {
@@ -115,6 +120,7 @@ public extension UIView {
     static var heroStoredAlpha = "heroStoredAlpha"
     static var heroEnabled = "heroEnabled"
     static var heroEnabledForSubviews = "heroEnabledForSubviews"
+    static var heroPersistsSnapshotAfterCompletion = "heroPersistsSnapshotAfterCompletion"
   }
 
   // TODO: can be moved to internal later (will still be accessible via IB)
