@@ -20,6 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if canImport(UIKit)
+
 import UIKit
 
 public class HeroContext {
@@ -30,6 +32,7 @@ public class HeroContext {
   internal var targetStates = [UIView: HeroTargetState]()
   internal var superviewToNoSnapshotSubviewMap: [UIView: [(Int, UIView)]] = [:]
   internal var insertToViewFirst = false
+  internal var persistsSnapshotAfterCompletion = true
 
   internal var defaultCoordinateSpace: HeroCoordinateSpace = .local
 
@@ -58,6 +61,11 @@ public class HeroContext {
           idMap[heroID] = view
         }
         targetStates[view] = targetState
+      }
+      // If any of the views would not like to persist the snapshot, all snapshots will be removed.
+      // my brain is dead please spare me
+      if !view.hero.persistsSnapshotAfterCompletion {
+        persistsSnapshotAfterCompletion = false
       }
     }
   }
@@ -139,6 +147,13 @@ extension HeroContext {
     unhide(view: view)
 
     // capture a snapshot without alpha, cornerRadius, or shadows
+    let oldMaskedCorners: CACornerMask = {
+      if #available(iOS 11, *) {
+        return view.layer.maskedCorners
+      } else {
+        return []
+      }
+    }()
     let oldCornerRadius = view.layer.cornerRadius
     let oldAlpha = view.alpha
 		let oldShadowRadius = view.layer.shadowRadius
@@ -161,11 +176,13 @@ extension HeroContext {
     case .layerRender:
       snapshot = view.slowSnapshotView()
     case .noSnapshot:
-      if view.superview != container {
-        if superviewToNoSnapshotSubviewMap[view.superview!] == nil {
-          superviewToNoSnapshotSubviewMap[view.superview!] = []
+      if let superview = view.superview, superview != container {
+        if superviewToNoSnapshotSubviewMap[superview] == nil {
+          superviewToNoSnapshotSubviewMap[superview] = []
         }
-        superviewToNoSnapshotSubviewMap[view.superview!]!.append((view.superview!.subviews.index(of: view)!, view))
+        if let index = superview.subviews.index(of: view) {
+          superviewToNoSnapshotSubviewMap[superview]!.append((index, view))
+        }
       }
       snapshot = view
     case .optimized:
@@ -218,6 +235,9 @@ extension HeroContext {
       }
     #endif
 
+    if #available(iOS 11, *) {
+      view.layer.maskedCorners = oldMaskedCorners
+    }
     view.layer.cornerRadius = oldCornerRadius
     view.alpha = oldAlpha
 		view.layer.shadowRadius = oldShadowRadius
@@ -226,7 +246,9 @@ extension HeroContext {
 		view.layer.shadowOpacity = oldShadowOpacity
 
     snapshot.layer.anchorPoint = view.layer.anchorPoint
-    snapshot.layer.position = containerView.convert(view.layer.position, from: view.superview!)
+    if let superview = view.superview {
+      snapshot.layer.position = containerView.convert(view.layer.position, from: superview)
+    }
     snapshot.layer.transform = containerView.layer.flatTransformTo(layer: view.layer)
     snapshot.layer.bounds = view.layer.bounds
     snapshot.hero.id = view.hero.id
@@ -235,12 +257,18 @@ extension HeroContext {
       if !(view is UINavigationBar), let contentView = snapshot.subviews.get(0) {
         // the Snapshot's contentView must have hold the cornerRadius value,
         // since the snapshot might not have maskToBounds set
+        if #available(iOS 11, *) {
+          contentView.layer.maskedCorners = view.layer.maskedCorners
+        }
         contentView.layer.cornerRadius = view.layer.cornerRadius
         contentView.layer.masksToBounds = true
       }
 
-      snapshot.layer.allowsGroupOpacity = false
+      if #available(iOS 11, *) {
+        snapshot.layer.maskedCorners = view.layer.maskedCorners
+      }
       snapshot.layer.cornerRadius = view.layer.cornerRadius
+      snapshot.layer.allowsGroupOpacity = false
       snapshot.layer.zPosition = view.layer.zPosition
       snapshot.layer.opacity = view.layer.opacity
       snapshot.layer.isOpaque = view.layer.isOpaque
@@ -262,9 +290,12 @@ extension HeroContext {
       hide(view: view)
     }
 
-    if let pairedView = pairedView(for: view), let pairedSnapshot = snapshotViews[pairedView] {
-      let siblingViews = pairedView.superview!.subviews
-      let nextSiblings = siblingViews[siblingViews.index(of: pairedView)!+1..<siblingViews.count]
+    if
+     let pairedView = pairedView(for: view),
+     let pairedSnapshot = snapshotViews[pairedView],
+     let siblingViews = pairedView.superview?.subviews,
+     let index = siblingViews.index(of: pairedView) {
+      let nextSiblings = siblingViews[index+1..<siblingViews.count]
       containerView.addSubview(pairedSnapshot)
       containerView.addSubview(snapshot)
       for subview in pairedView.subviews {
@@ -395,3 +426,5 @@ extension HeroContext {
 public protocol HeroCustomSnapshotView {
 	var heroSnapshot: UIView? { get }
 }
+
+#endif

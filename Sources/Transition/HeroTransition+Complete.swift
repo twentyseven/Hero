@@ -20,6 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if canImport(UIKit)
+
 import UIKit
 
 extension HeroTransition {
@@ -64,7 +66,9 @@ extension HeroTransition {
         context.storeViewAlpha(rootView: fromView)
         fromViewController?.hero.storedSnapshot = container
         container.superview?.addSubview(fromView)
-        fromView.addSubview(container)
+        if context.persistsSnapshotAfterCompletion {
+          fromView.addSubview(container)
+        }
       } else if !finished && !isPresenting && fromOverFullScreen {
         // cancelled dismissing a overFullScreen VC
         context.unhide(rootView: fromView)
@@ -72,7 +76,9 @@ extension HeroTransition {
         context.storeViewAlpha(rootView: toView)
         toViewController?.hero.storedSnapshot = container
         container.superview?.addSubview(toView)
-        toView.addSubview(container)
+        if context.persistsSnapshotAfterCompletion {
+          toView.addSubview(container)
+        }
       } else {
         context.unhideAll()
         context.removeAllSnapshots()
@@ -143,3 +149,5 @@ extension HeroTransition {
     transitionContext?.completeTransition(finished)
   }
 }
+
+#endif
